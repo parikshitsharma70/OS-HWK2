@@ -1,57 +1,102 @@
-#include <sys/types.h>
-#include <unistd.h>
+/*  
+*  Name:       Parikshit Sharma 
+*  Login:      SP_19_CPS536_12
+*  Purpose:    Create chain of processes and generate random int in each child process, and return to the 
+*              parent process as exit code
+*  Bug report: The counter is not working since the increment function is being executed in a parent 
+*              different process in the chain everytime.
+*              Hence, the address space of each process is different and we need to utilize shared memory
+*              using mutex and locks.
+*/
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <math.h>
+
+//Declare global variables
 
 pid_t child_pid, wpid;
 int status = 0;
-int id;
-int odd = 0;
-int even = 0;
+int odd = 0, even = 0;
 int range = 50000;
-int count = 0;
-static int glob_var = 0;
+int id;
+int x, n;
 
-int func(int n){
-    glob_var = mmap(NULL, sizeof glob_var, PROT_READ | PROT_WRITE, 
-                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+//Recursive function to fork processes in chain
+int function(int n){
+    
+    //Break if n == 0
     if(n>0){
+        
+        //If fork is successful
         if ((child_pid = fork()) == 0) {
+            
+            //Increment MyID counter
+            id = id + 1;
+            
+            //Generate random value
             srand(getpid());
             int value = rand() % range;
-            printf("pid : %d , ppid :  %d, val : %d \n", getpid(), getppid(), value);     
-            func(n-1);
-            // printf("value : %d \n", value);
+            
+            fprintf(stderr, "MyID : %d, Child Process PID : %d , ppid :  %d, Random Value : %d \n", id, getpid(), getppid(), value);     
+            
+            //Function callback here 
+            function(n-1);
+            
+            //If value is even
             if(value % 2 == 0){
-                exit(5);
+                exit(0);
             }
+
+            //If value is odd
             else{
-                exit(6);
-            }
+                exit(1);
             }
         }
+        //If fork failed
+        else if((child_pid = fork()) == -1){
+            fprintf(stderr, "Fork failed");
+            exit(2);
+        } 
+    }
         
+    //Wait for child processes to quit
     while ((wpid = wait(&status)) > 0) {
-        int y = glob_var;
-        // y = y + 1;
-        int x = WEXITSTATUS(status);
-        printf("x : %d \n", y);
-        if(x == 5){
-            even = even + 1; 
-            printf("EVEN myid %d received #even : %d #odd : %d \n", getpid(), even, odd);
+        if(WIFEXITED(status)){
+            wpid = wait(&status);
+            x = WEXITSTATUS(status);
+            if(x == 0 && id > 0){
+                even = even + 1; 
+                fprintf(stderr, "PID %d received - EVEN #even : %d #odd : %d \n", id, even, odd);
+            }
+            else if( x == 1 && id > 0){
+                odd = odd + 1;
+                fprintf(stderr, "PID %d received - ODD  #even : %d #odd : %d \n", id, even, odd);
+            }
+            else if(id == 0){
+                printf("Final results : #even : %d, #odd : %d \n", even, odd);
+            }
         }
         else{
-            odd = odd + 1;
-            printf("ODD myid %d received #even : %d #odd : %d \n", getpid(), even, odd);
+            fprintf(stderr, "Child exited abnormally");
         }
     }
 }
 
-int main(){
-    int odd = 0;
-    int even = 0;
-    func(10);
+
+//Function to check correct usage and invoke recursive function first time
+int main(int argc, char * argv[]){
+    
+    //Invalid usage error handling
+    if (argc != 2) {
+      fprintf(stderr, "Usage is %s <int> \n", argv[0]);
+      exit(1);
+    }
+    
+    //Number of processes to be created
+    n = atoi(argv[1]);
+
+    //Invoke function for the first time.
+    function(n);
 }
