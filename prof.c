@@ -6,34 +6,49 @@
 
 
 int main(int argc, char *argv[]){
-    pid_t child_pid, retid;
-    int status, exitval;
+	pid_t child_pid, retid;
+	int status, even,odd,i,n,value;
 
-    if (argc != 2){
-        fprintf(stderr, "Usage is %s <int> \n", argv[0]);
-        exit(1);
-    }
-    exitval = atoi(argv[1]);
+	if (argc != 2){
+	        fprintf(stderr, "Usage is %s <int> \n", argv[0]);
+	        exit(1);
+	}
+	n = atoi(argv[1]);
+	for (i = 0; i < n; i++){
+       		if((child_pid = fork()) == -1){
+			fprintf(stderr, "For failed . \n");
+			exit(2);
+    		}
 
-    if((child_pid = fork()) == -1){
-        fprintf(stderr, "For failed . \n");
-        exit(2);
-    }
-    else if(child_pid > 0){
-        fprintf(stderr, "Parent to wait. \n");
-        retid = wait(&status);
-        fprintf(stderr, "Status from child id %d. \n", retid);
-        if(WIFEXITED(status)){
-                fprintf(stderr, "Child exited normally with exit status %d \n", WEXITSTATUS(status));
-            }
-        else{
-            fprintf(stderr, "Abnormal exit of child. \n");
-        }
-        }
-    else{
-        fprintf(stderr, "Child %d to sleep \n", getpid());
-        sleep(3);
-        exit(exitval);
-    }
-    return 0;
+    		else if(child_pid > 0){
+			srand(child_pid);
+			value=rand()%50000;
+        		fprintf(stderr, "myid:%d pid:%d ppid: %d value: %d. \n",i+1,getpid(),getppid(),value);
+			retid = wait(&status);	
+			if(WIFEXITED(status)){
+				if(WEXITSTATUS(status))
+					odd+=1;
+				else
+					even+=1;
+                	fprintf(stderr, "myid:%d recieves #odd: %d #even: %d \n", i+1,odd,even);
+            		}
+        		else{
+            			fprintf(stderr, "Abnormal exit of child. \n");
+        		}
+       			
+		}
+			
+    		else{
+			if(value % 2==0)
+				exit(1);
+		
+			else
+				exit(0);
+			
+			
+        		
+        		
+		}
+	}
+	return 0;
 }
